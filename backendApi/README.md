@@ -119,17 +119,4 @@ Server listens on `PORT` (default `3000`). `GET /` renders a status page.
 
 Runtime deps: `express`, `mongoose`, `jsonwebtoken`, `bcryptjs`, `express-validator`,
 `helmet`, `cors`, `cookie-parser`, `dotenv`, `ejs`, `morgan`, `winston`,
-`winston-daily-rotate-file`, `nodemailer`, `moment-timezone`, `multiparty`, `uuid`.
-
-## Auth API (`POST` only, mounted at `/v1/user`)
-
-| Endpoint | Body | Result |
-|---|---|---|
-| `/login` | `email, password, login_type(1), browser{id,name,version}` | `{ authorization_code, redirect_url }` |
-| `/generateToken` | `authorization_code` | `{ access_token, refresh_token, refresh_token_expire_timestamp }` |
-| `/regenerateToken` | `access_token, refresh_token` | new token pair (401 if refresh expired/invalid) |
-| `/forgotPassword` | `email` | sends OTP email (OTP echoed in `dataset.otp` when `NODE_ENV != production`) |
-| `/verifyOtp` | `email, otp` | `{ verified: true }` |
-| `/resetPassword` | `email, password, confirm_password` | `{ reset: true }` |
-
-Any non-POST verb on these routes returns `405` in the standard envelope.
+`winston-daily-rotate-file`, `nodemailer`, `moment-timezone`, `multiparty`, `uuid`
