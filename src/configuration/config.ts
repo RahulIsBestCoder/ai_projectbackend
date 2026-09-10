@@ -8,12 +8,12 @@ import mongoose, { Mongoose } from 'mongoose';
  */
 export class Connection {
   public async connect(): Promise<Mongoose> {
-    const uri = `${process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/'}${process.env.DB_NAME || 'hiresense'}`;
+    const uri = `${process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/'}${process.env.DB_NAME || 'ai_project'}`;
     console.log("🚀 ~ Connection ~ connect ~ uri=================:", uri)
    
     try {
       await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
-      mongoose.connection.useDb(process.env.DB_NAME || 'hiresense');
+      mongoose.connection.useDb(process.env.DB_NAME || 'ai_project');
       // eslint-disable-next-line no-console
       console.log(`[db] connected: ${uri}`);
     } catch (err) {

@@ -1,4 +1,4 @@
-# HireSense Backend API
+# Ai Project Backend API
 
 TypeScript / Express / Mongoose modular-monolith REST backend, built to the
 architecture in [`plan.md`](./plan.md).
@@ -35,25 +35,91 @@ src/
   views/                     error.ejs, index.ejs, email_templates/
 ```
 
-## Setup
+## Installation
 
-```bash
-npm install
-cp .env.example .env          # already done; adjust as needed
-# make sure MongoDB is reachable at MONGODB_URI (default mongodb://127.0.0.1:27017/)
-npm run seed                  # creates the Web client + admin@hiresense.local / Admin@123
-```
+### Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Node.js | 22+ (matches `@types/node` 22 and `target es2016`) |
+| npm | ships with Node |
+| MongoDB | local (`mongodb://127.0.0.1:27017/`) or a hosted cluster; set via `MONGODB_URI` |
+| Redis | optional — only needed once BullMQ workers are wired; not read by current code |
+
+### Steps
+
+1. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   `.env.example` holds demo/placeholder values. Copy it to `.env` and replace
+   anything marked `# CHANGE ME` for real integrations. Key values:
+
+   | Var | Purpose | Default |
+   |---|---|---|
+   | `PORT` | HTTP port | `3000` |
+   | `MONGODB_URI` | MongoDB connection string | Atlas cluster (change to your own) |
+   | `DB_NAME` | database name | `ai_project` |
+   | `JWT_SECRET` / `REFRESH_TOKEN_KEY` | token signing keys (min 32 chars) | placeholder |
+   | `SECRET_KEY` / `IV` | AES envelope + auth-code crypto | placeholder |
+   | `SEND_EMAIL` | `1` to actually send SMTP mail, `0` to skip | `0` |
+
+3. **Make sure MongoDB is reachable** at `MONGODB_URI`. If it is unreachable the
+   process still starts; queries fail at call time.
+
+4. **Seed baseline data**
+
+   ```bash
+   npm run seed          # creates the Web client + SEED_USER_EMAIL / SEED_USER_PASSWORD
+   ```
+
+   Other optional seeders: `npm run seed:dummy`, `seed:mongo`, `seed:defaults`, `seed:week`.
+
+### Windows note
+
+`npm run build` uses POSIX `cp -r` / `mkdir -p` (via the `copyassets` script), so
+it requires Git Bash or WSL on Windows. `npm run dev`, `npm run seed`, and
+`npm run typecheck` work in PowerShell as-is.
 
 ## Run
 
 ```bash
-npm run dev      # ts-node + nodemon
+npm run dev                    # ts-node + nodemon (hot reload)
 # or
-npm run build && npm start    # tsc -> dist/, then node dist/app.js
+npm run build && npm start     # tsc -> dist/, then node dist/app.js
+```
+
+```bash
+npm run typecheck              # tsc --noEmit, no output
 ```
 
 Server listens on `PORT` (default `3000`). `GET /` renders a status page.
-If MongoDB is unreachable the process still starts (queries fail at call time).
+
+## npm scripts
+
+| Script | Command | Purpose |
+|---|---|---|
+| `npm run dev` | `nodemon` | ts-node dev server with hot reload |
+| `npm run build` | `tsc && npm run copyassets` | compile to `dist/`, copy `views/`, make `dist/public` |
+| `npm start` | `node dist/app.js` | run the compiled build |
+| `npm run typecheck` | `tsc --noEmit` | type-check only |
+| `npm run seed` | `ts-node src/scripts/seed.ts` | seed `Web` client + seed user |
+| `npm run seed:dummy` | `ts-node src/scripts/seed_dummy_data.ts` | dummy data |
+| `npm run seed:mongo` | `ts-node src/scripts/seed_mongo.ts` | mongo seed |
+| `npm run seed:defaults` | `ts-node src/scripts/seed_defaults.ts` | default records |
+| `npm run seed:week` | `ts-node src/scripts/seed_week.ts` | one week of data |
+
+Runtime deps: `express`, `mongoose`, `jsonwebtoken`, `bcryptjs`, `express-validator`,
+`helmet`, `cors`, `cookie-parser`, `dotenv`, `ejs`, `morgan`, `winston`,
+`winston-daily-rotate-file`, `nodemailer`, `moment-timezone`, `multiparty`, `uuid`.
 
 ## Auth API (`POST` only, mounted at `/v1/user`)
 
@@ -67,19 +133,3 @@ If MongoDB is unreachable the process still starts (queries fail at call time).
 | `/resetPassword` | `email, password, confirm_password` | `{ reset: true }` |
 
 Any non-POST verb on these routes returns `405` in the standard envelope.
-
-### Quick check
-
-```bash
-curl -s -X POST localhost:3000/v1/user/login -H 'Content-Type: application/json' \
-  -d '{"email":"admin@hiresense.local","password":"Admin@123","login_type":1,"browser":{"id":"b1","name":"chrome"}}'
-```
-
-## Notes / parity with the plan
-
-- `common_middleware.validateToken` is implemented but auth routes deliberately omit it (plan §5.1).
-- `common_middleware.checkAccessPermission` is present but latent — not wired to routes (plan §7.3).
-- Transport envelope encryption is off by default (`ENCRYPTED_DATA=0`); set to `1` to enable `enc_data` wrapping.
-- Email delivery is gated by `SEND_EMAIL=1`; otherwise sends are logged and skipped.
-- Route modules are `require()`d after the `global` service locator is populated, so eager
-  controller/service/model singletons see `global.db` (see `src/app.ts` step 9).

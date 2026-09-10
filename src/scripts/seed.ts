@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
  * Run: `npm run seed`
  */
 async function run(): Promise<void> {
-  const uri = `${process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/'}${process.env.DB_NAME || 'hiresense'}`;
+  const uri = `${process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/'}${process.env.DB_NAME || 'ai_project'}`;
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
   const db = mongoose.connection;
   const now = new Date();
@@ -34,7 +34,7 @@ async function run(): Promise<void> {
     { upsert: true },
   );
 
-  const email = process.env.SEED_USER_EMAIL || 'admin@hiresense.local';
+  const email = process.env.SEED_USER_EMAIL || 'admin@ai_project.local';
   const password = process.env.SEED_USER_PASSWORD || 'Admin@123';
   const passwordHash = await bcrypt.hash(password, 10);
 

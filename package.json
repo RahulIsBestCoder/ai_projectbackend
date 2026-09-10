@@ -1,7 +1,7 @@
 {
-  "name": "hiresense-backend-api",
+  "name": "ai_project-backend-api",
   "version": "1.0.0",
-  "description": "HireSense Backend API - TypeScript/Express modular monolith (auth domain + shared infrastructure)",
+  "description": "ai_project Backend API - TypeScript/Express modular monolith (auth domain + shared infrastructure)",
   "main": "dist/app.js",
   "scripts": {
     "dev": "nodemon",
