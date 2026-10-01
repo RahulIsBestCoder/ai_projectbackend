@@ -113,7 +113,7 @@ export class AnalyticsService {
       const trends: Record<string, any[]> = {};
       for (const snap of snapshots) {
         const type = snap.metric_type;
-        if (!latest[snap.captured_at] || new Date(snap.captured_at) > new Date(latest[type]?.captured_at || 0)) {
+        if (!latest[type] || new Date(snap.captured_at) > new Date(latest[type]?.captured_at || 0)) {
           latest[type] = snap;
         }
         if (!trends[type]) trends[type] = [];
@@ -125,10 +125,10 @@ export class AnalyticsService {
         latest,
         trends,
         summary: {
-          health: latest.health?.value || null,
-          velocity: latest.velocity?.value || null,
-          progress: latest.progress?.value || null,
-          quality: latest.quality?.value || null,
+          health: latest.health?.value ?? null,
+          velocity: latest.velocity?.value ?? null,
+          progress: latest.progress?.value ?? null,
+          quality: latest.quality?.value ?? null,
         },
       });
     } catch (err: any) {
@@ -160,6 +160,7 @@ export class AnalyticsService {
   }
 
   private _avg(rows: any[]): number | null {
+    rows = rows.filter(r => typeof r.value === 'number' && Number.isFinite(r.value));
     if (!rows.length) return null;
     return Math.round((rows.reduce((s, r) => s + (r.value || 0), 0) / rows.length) * 10) / 10;
   }
@@ -179,14 +180,17 @@ export class AnalyticsService {
       const project = await db.collection('projects').findOne({ _id: this._oid(projectId) });
       if (!project) return global.Helpers.makeBadServiceStatus('Project not found.');
 
+      // Rule-based health is calculated on request (health/rules-score), never stored.
+      // Ignore any leftover 'health-rules-v1' snapshot rows so they cannot shadow the
+      // AI assessment's latest health score here.
       const snaps = await db.collection('analytics_snapshots')
-        .find({ project_id: projectId, is_deleted: false })
+        .find({ project_id: projectId, is_deleted: false, calculation_version: { $ne: 'health-rules-v1' } })
         .sort({ captured_at: 1 }).toArray();
 
       const now = Date.now();
       const WEEK = 7 * 86400000;
       const dimensions = Object.keys(AnalyticsService.METRIC_LABELS).map((metric) => {
-        const pts = snaps.filter((s: any) => s.metric_type === metric && s.value != null);
+        const pts = snaps.filter((s: any) => s.metric_type === metric);
         const current = pts.length ? pts[pts.length - 1].value : null;
         const recent = pts.filter((p: any) => now - new Date(p.captured_at).getTime() <= WEEK);
         const prior = pts.filter((p: any) => {
@@ -209,6 +213,9 @@ export class AnalyticsService {
 
       const healthDim = dimensions.find((d) => d.metric === 'health');
       const score = healthDim && healthDim.value != null ? healthDim.value : (project.health_score ?? null);
+      const latestAiHealth = [...snaps].reverse().find((snapshot: any) =>
+        snapshot.metric_type === 'health' && snapshot.calculation_version === 'ai-combined-v1');
+      const assessmentBreakdown = latestAiHealth?.breakdown || null;
 
       const latestRisk = await db.collection('risk_predictions')
         .find({ project_id: projectId, kind: 'risk', is_deleted: false })
@@ -228,6 +235,16 @@ export class AnalyticsService {
           trend: healthDim ? healthDim.trend : 'stable',
         },
         dimensions,
+        assessment: latestAiHealth ? {
+          health: typeof latestAiHealth.value === 'number' ? latestAiHealth.value : null,
+          quality: dimensions.find((dimension) => dimension.metric === 'quality')?.value ?? null,
+          confidence_percent: Number(assessmentBreakdown?.confidence_percent) || 0,
+          summary: String(assessmentBreakdown?.summary || ''),
+          limitations: Array.isArray(assessmentBreakdown?.limitations) ? assessmentBreakdown.limitations : [],
+          evidence: Array.isArray(assessmentBreakdown?.evidence) ? assessmentBreakdown.evidence : [],
+          sources: Array.isArray(assessmentBreakdown?.sources) ? assessmentBreakdown.sources : [],
+          assessed_at: latestAiHealth.captured_at || latestAiHealth.created_at || null,
+        } : null,
         risk: {
           latest: latestRisk.length ? {
             level: latestRisk[0].risk_level,

@@ -18,6 +18,12 @@ export class AiPlanModel extends Model {
         provider: { type: String, default: 'google' },
         model: { type: String },
         prompt: { type: String },
+        status: { type: String, default: 'draft' },
+        accepted_at: { type: Date },
+        /** Set after a Taiga publish: completed | partial. */
+        publish_status: { type: String },
+        published_at: { type: Date },
+        taiga_project_id: { type: Number },
         is_deleted: { type: Boolean, default: false },
         created_at: { type: Date, default: Date.now },
         updated_at: { type: Date },

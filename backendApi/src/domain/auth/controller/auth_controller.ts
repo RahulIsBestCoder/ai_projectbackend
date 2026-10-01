@@ -13,6 +13,11 @@ import {
  * `AuthController` (plan §5.3 / §14.1). Thin: map `request.body` -> DTO, call the
  * service, map the result object -> HTTP envelope. No business logic.
  */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: AuthController
+ */
 export class AuthController {
   private readonly _service = new AuthService();
 

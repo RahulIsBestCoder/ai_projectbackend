@@ -10,4 +10,5 @@ export interface IProjectUpdate {
   name?: string;
   description?: string;
   status?: number;
+  target_date?: string;
 }

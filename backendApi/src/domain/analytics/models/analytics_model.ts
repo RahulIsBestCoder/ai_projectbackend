@@ -12,7 +12,7 @@ export class AnalyticsModel extends Model {
       {
         project_id: { type: String, required: true },
         metric_type: { type: String, required: true },
-        value: { type: Number, required: true },
+        value: { type: Number, default: null },
         breakdown: { type: Object, default: {} },
         period: { type: String, default: 'daily' },
         calculation_version: { type: String, default: 'v1' },

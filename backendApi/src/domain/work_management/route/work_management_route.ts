@@ -6,6 +6,8 @@ const router = Router();
 const controller = new WorkManagementController();
 
 router.post('/', workManagementMiddleware.validateCreate, controller.createWorkItem);
+router.get('/source/taiga', controller.findTaigaWorkItems);
+router.get('/source/:source', controller.findBySource);
 router.get('/:id', controller.getWorkItem);
 router.put('/:id', workManagementMiddleware.validateUpdate, controller.updateWorkItem);
 router.delete('/:id', controller.deleteWorkItem);

@@ -1,9 +1,14 @@
 import { Request, Response } from 'express';
 import { GitIntelligenceService } from '../service/git_intelligence_service';
-import { IRepositoryCreate, IRepositoryUpdate } from '../interface/git_intelligence_interface';
+import { DEFAULT_REPO_CATEGORY, REPO_CATEGORIES, IRepositoryCreate, IRepositoryUpdate } from '../interface/git_intelligence_interface';
 
 /**
  * `GitIntelligenceController` – Handles linked-repository CRUD (plan §06).
+ */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: GitIntelligenceController
  */
 export class GitIntelligenceController {
   private readonly _service = new GitIntelligenceService();
@@ -11,6 +16,27 @@ export class GitIntelligenceController {
   private initLog(): void {
     /* parity with plan convention */
   }
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-13
+   * @Function: getCategories
+   * @Description: Dropdown options for the UI "what is this repo for" picker
+   *               (ui team / backend / apps / shared / other).
+   */
+  public getCategories = async (_req: Request, res: Response): Promise<void> => {
+    this.initLog();
+    try {
+      global.Helpers.successStatusBuild(
+        res,
+        { categories: REPO_CATEGORIES, default: DEFAULT_REPO_CATEGORY },
+        'Repo categories fetched.',
+      );
+    } catch (error) {
+      global.logs.writelog('getCategories', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, 'Something went wrong. Please try again');
+    }
+  };
 
   /*
    * @Developer: Sougata Bauri
@@ -125,7 +151,10 @@ export class GitIntelligenceController {
       const projectId = req.params.projectId;
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 20;
-      const ret = await this._service.getCommitsByProject(projectId, page, limit);
+      const repositoryId = typeof req.query.repository_id === 'string'
+        ? req.query.repository_id
+        : (typeof req.query.repositoryId === 'string' ? req.query.repositoryId : undefined);
+      const ret = await this._service.getCommitsByProject(projectId, page, limit, repositoryId);
       if (ret.status) {
         global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
       } else {
@@ -144,7 +173,8 @@ export class GitIntelligenceController {
       const projectId = req.params.projectId;
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 20;
-      const ret = await this._service.getPullRequestsByProject(projectId, page, limit);
+      const repositoryId = typeof req.query.repository_id === 'string' ? req.query.repository_id : undefined;
+      const ret = await this._service.getPullRequestsByProject(projectId, page, limit, repositoryId);
       if (ret.status) {
         global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
       } else {

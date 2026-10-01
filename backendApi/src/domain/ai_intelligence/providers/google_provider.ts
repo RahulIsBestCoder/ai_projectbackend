@@ -1,4 +1,4 @@
-import { IAiProvider } from './base_provider';
+import { IAiProvider, AiTokenUsage, estimateTokens } from './base_provider';
 
 /**
  * `GoogleProvider` – Google Gemini implementation of `IAiProvider`.
@@ -14,6 +14,14 @@ import { IAiProvider } from './base_provider';
  *  - AI_RETRY_DELAY_MS               : initial retry delay in ms (default: 1000)
  */
 export class GoogleProvider implements IAiProvider {
+  /** @Developer Cline @Date 2026-09-13 — provider contract fields for the tabs UI */
+  public readonly type = 'gemini';
+  public readonly name = 'Google Gemini';
+  public get model(): string {
+    return this._model;
+  }
+  public lastUsage: AiTokenUsage | null = null;
+
   private readonly _apiKey: string;
   private readonly _model: string;
   private readonly _baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
@@ -22,10 +30,10 @@ export class GoogleProvider implements IAiProvider {
   private readonly _timeoutMs: number;
   private readonly logName = 'google_provider';
 
-  constructor() {
+  constructor(model?: string) {
     this._apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
-    this._model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-    this._maxRetries = Number(process.env.AI_MAX_RETRIES) || 3;
+    this._model = model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    this._maxRetries = Math.max(0, Math.min(5, Number(process.env.AI_MAX_RETRIES ?? 3) || 0));
     this._retryDelayMs = Number(process.env.AI_RETRY_DELAY_MS) || 1000;
     // Hard per-request deadline so a stalled network can't hang the API
     // (route handlers must always answer — service falls back if we throw).
@@ -69,7 +77,8 @@ export class GoogleProvider implements IAiProvider {
     if (!this._apiKey) {
       throw new Error('Missing GEMINI_API_KEY (or GOOGLE_API_KEY) in environment.');
     }
-    this.log('generate', [`Model : ${this._model}`, 'Prompt : ', prompt]);
+    this.lastUsage = null;
+    this.log('generate', `Model: ${this._model}`);
 
     let lastError: Error | null = null;
 
@@ -90,7 +99,7 @@ export class GoogleProvider implements IAiProvider {
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               maxOutputTokens: Number(process.env.AI_MAX_TOKENS) || 1024,
-              temperature: Number(process.env.AI_TEMPERATURE) || 0.2,
+              temperature: Number(process.env.AI_TEMPERATURE ?? 0.2),
             },
           }),
           signal: AbortSignal.timeout(this._timeoutMs),
@@ -113,10 +122,18 @@ export class GoogleProvider implements IAiProvider {
         }
 
         const text: string =
-          data?.candidates?.[0]?.content?.parts?.map((part: any) => part?.text).filter(Boolean).join('') || '';
+          data?.candidates?.[0]?.content?.parts?.filter((part: any) => !part.thought).map((part: any) => part?.text).filter(Boolean).join('') || '';
         if (!text) {
           throw new Error('Gemini API returned an empty response.');
         }
+        // Gemini reports real counts in `usageMetadata`; fall back to estimate.
+        const pt = Number(data?.usageMetadata?.promptTokenCount) || estimateTokens(prompt);
+        const ct = Number(data?.usageMetadata?.candidatesTokenCount) || estimateTokens(text);
+        this.lastUsage = {
+          prompt_tokens: pt,
+          completion_tokens: ct,
+          total_tokens: Number(data?.usageMetadata?.totalTokenCount) || pt + ct,
+        };
         this.log('generate', 'Response received successfully.');
         return text;
       } catch (err: any) {
@@ -124,7 +141,7 @@ export class GoogleProvider implements IAiProvider {
         lastError = err;
         
         // If it's not a retryable error, throw immediately
-        if (err.message && !this.isRetryableError(err.message, 0)) {
+        if (!['TimeoutError', 'TypeError'].includes(err?.name) && !this.isRetryableError(String(err?.message || ''), 0)) {
           throw err;
         }
       }

@@ -9,7 +9,9 @@ router.post('/', sprintIntelligenceMiddleware.validateCreate, controller.createS
 router.get('/:id/summary', controller.getSprintSummary);
 router.get('/:id/burndown', controller.getBurndown);
 router.get('/:id/burnup', controller.getBurnup);
-router.get('/:id/velocity', controller.getVelocity);
+router.get('/:sprintId/velocity', controller.getVelocity);
+router.get('/:id/comparison', controller.getComparison);
+router.get('/:id/taga-status-tabs', controller.getTaigaStatusTabs);
 router.get('/:id/retrospective', controller.getRetrospective);
 router.get('/:id', controller.getSprint);
 router.put('/:id', sprintIntelligenceMiddleware.validateUpdate, controller.updateSprint);

@@ -58,10 +58,17 @@ export class common_helper {
       .send(this.buildBody('dataset', dataset, msg, true));
   }
 
-  public badRequestStatusBuild(res: Response, msg: string) {
+  public badRequestStatusBuild(res: Response, msg: string, dataset: unknown = {}) {
     return res
       .status(helperConfig.HTTP_STATUS_BAD_REQUEST)
-      .send(this.buildBody('dataset', {}, msg, false));
+      .send(this.buildBody('dataset', dataset, msg, false));
+  }
+
+  /** Failure envelope with a caller-chosen HTTP status (e.g. 409, 429). */
+  public customStatusBuild(res: Response, statusCode: number, msg: string, dataset: unknown = {}) {
+    return res
+      .status(statusCode)
+      .send(this.buildBody('dataset', dataset, msg, false));
   }
 
   public unauthorizedStatusBuild(res: Response, msg: string) {

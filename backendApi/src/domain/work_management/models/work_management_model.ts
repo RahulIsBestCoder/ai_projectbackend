@@ -12,6 +12,7 @@ export class WorkManagementModel extends Model {
         project_id: { type: String, required: true },
         integration_id: { type: String },
         external_id: { type: String },
+        source: { type: String, default: 'manual' },
         title: { type: String, required: true },
         description: { type: String },
         type: { type: String, default: 'task' },

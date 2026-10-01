@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { validatePlanInput } from '../service/plan_schedule';
 export const aiIntelligenceMiddleware = {
   validateCreate: (req: Request, res: Response, next: NextFunction) => {
     const { type } = req.body;
@@ -15,9 +16,20 @@ export const aiIntelligenceMiddleware = {
     next();
   },
   validateGeneratePlan: (req: Request, res: Response, next: NextFunction) => {
-    const description = req.body?.description;
-    if (!description || typeof description !== 'string' || !description.trim()) {
-      return res.status(400).json({ message: 'description is required (describe the project to plan).' });
+    try {
+      validatePlanInput(req.body);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
+    next();
+  },
+  validateToggleExecutionItem: (req: Request, res: Response, next: NextFunction) => {
+    if (typeof req.body?.is_completed !== 'boolean') {
+      return res.status(400).json({ message: 'is_completed (boolean) is required.' });
+    }
+    const allowed = ['sprint', 'task', 'milestone', 'deadline', 'dependency'];
+    if (req.params.kind && !allowed.includes(req.params.kind)) {
+      return res.status(400).json({ message: 'Invalid execution item kind.' });
     }
     next();
   },

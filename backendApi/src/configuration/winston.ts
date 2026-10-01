@@ -10,7 +10,6 @@ import { LoggerSettings } from './log_config';
  */
 export class winstonlog {
   public logger: winston.Logger;
-
   constructor(settings: LoggerSettings) {
     const dir = settings.log_path || 'logs';
     if (settings.log_to_file && !fs.existsSync(dir)) {

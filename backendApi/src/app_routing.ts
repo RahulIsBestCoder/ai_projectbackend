@@ -10,6 +10,7 @@ import sprintIntelligenceRoutes from './domain/sprint_intelligence/route/sprint_
 import analyticsRoutes from './domain/analytics/route/analytics_route';
 import riskPredictionRoutes from './domain/risk_prediction/route/risk_prediction_route';
 import aiIntelligenceRoutes from './domain/ai_intelligence/route/ai_intelligence_route';
+import { createTaigaPlanRoutes } from './domain/integration/route/taiga_plan_route';
 import reportingRoutes from './domain/reporting/route/reporting_route';
 import notificationRoutes from './domain/notification/route/notification_route';
 
@@ -47,12 +48,36 @@ app_route.use('/notifications', notificationRoutes);
 const planRoutes = express.Router();
 planRoutes.post('/', aiIntelligenceMiddleware.validateGeneratePlan, (req, res) => aiController.generatePlan(req, res));
 planRoutes.get('/', (req, res) => aiController.listPlans(req, res));
+planRoutes.post('/:id/accept', (req, res) => aiController.acceptPlan(req, res));
+planRoutes.get('/:id/execution', (req, res) => aiController.getPlanExecution(req, res));
+planRoutes.patch('/:id/execution/:kind/:itemId', aiIntelligenceMiddleware.validateToggleExecutionItem, (req, res) => aiController.toggleExecutionItem(req, res));
 planRoutes.get('/:id', (req, res) => aiController.getPlan(req, res));
+
+// Plan-scoped Taiga publish ("Create in Taiga" button) — POST /v1/plans/:planId/create-in-taiga,
+// .../create-in-taiga/preview, GET .../taiga-sync, POST .../taiga-sync/retry.
+// Same handlers as the /v1/ai/plans alias (ai_intelligence_route.ts).
+planRoutes.use(createTaigaPlanRoutes());
 app_route.use('/plans', planRoutes);
 
 // Root-level workforce endpoint (plan §03): departments of an organization.
 // Mounted outside the organization router so the frontend can call
 // GET /v1/departments?organization_id=... directly.
+// Feature flags seeded into `feature_flags` (seed_defaults.ts). Read-only; `flags` is a name -> enabled map.
+app_route.get('/feature-flags', async (_req, res) => {
+  try {
+    const rows = await global.db.connection.db!.collection('feature_flags')
+      .find({ is_deleted: { $ne: true } })
+      .project({ _id: 0, name: 1, enabled: 1, description: 1, updated_at: 1 })
+      .sort({ name: 1 })
+      .toArray();
+    const flags = Object.fromEntries(rows.map(row => [String(row.name), row.enabled === true]));
+    global.Helpers.successStatusBuild(res, { rows, count: rows.length, flags }, 'Feature flags fetched.');
+  } catch (error) {
+    global.logs.writelog('featureFlags', error, 'ERROR');
+    global.Helpers.badRequestStatusBuild(res, 'Something went wrong. Please try again');
+  }
+});
+
 app_route.get('/departments', organizationController.listDepartments);
 app_route.get('/departments/:id/metrics', organizationController.getDepartmentMetrics);
 

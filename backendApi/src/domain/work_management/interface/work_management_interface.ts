@@ -10,6 +10,7 @@ export interface IWorkItemCreate {
   story_points?: number;
   integration_id?: string;
   external_id?: string;
+  source?: string;
 }
 
 export interface IWorkItemUpdate {
@@ -21,4 +22,5 @@ export interface IWorkItemUpdate {
   assignee_id?: string;
   sprint_id?: string;
   story_points?: number;
+  source?: string;
 }

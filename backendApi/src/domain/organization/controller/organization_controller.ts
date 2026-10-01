@@ -5,7 +5,27 @@ import { OrganizationService } from '../service/organization_service';
 /**
  * `OrganizationController` – Handles organization CRUD and settings.
  */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: OrganizationController
+ */
 export class OrganizationController {
+  public setQaReporterRole = async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (typeof req.body?.reporting_role !== 'string' || !['qa', 'manager'].includes(req.body.reporting_role)) {
+        global.Helpers.badRequestStatusBuild(res, 'reporting_role must be qa or manager.');
+        return;
+      }
+      const result = await this._service.setQaReporterRole(req.params.projectId, req.params.reporterId,
+        req.body.reporting_role, String(req.body.loginDetails.verifiedData.user_id));
+      if (result.status) global.Helpers.successStatusBuild(res, result.data_sets, result.status_message);
+      else global.Helpers.badRequestStatusBuild(res, result.status_message);
+    } catch (error) {
+      global.logs.writelog('setQaReporterRole', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, 'Could not save reporter classification.');
+    }
+  };
   private readonly _service = new OrganizationService();
 
   private initLog(): void {
@@ -124,6 +144,13 @@ export class OrganizationController {
     }
   };
 
+  /** Selected project id(s) from `?project_id=a[,b]`; undefined when none is a valid ObjectId. */
+  private _selectedProjectIds(req: Request): string[] | undefined {
+    const raw = typeof req.query.project_id === 'string' ? req.query.project_id : '';
+    const ids = raw.split(',').map(id => id.trim()).filter(id => /^[a-f0-9]{24}$/i.test(id));
+    return ids.length ? ids : undefined;
+  }
+
   /*
    * @Developer: Sougata Bauri
    * @Date: 2026-09-10
@@ -134,7 +161,12 @@ export class OrganizationController {
     const trace = `listDepartments${global.Helpers.getTraceID(req.query)}`;
     try {
       const organizationId = req.query.organization_id as string | undefined;
-      const ret = await this._service.listDepartments(organizationId);
+      const projectIds = this._selectedProjectIds(req);
+      if (!projectIds) {
+        global.Helpers.badRequestStatusBuild(res, 'Select a project: a valid project_id is required.');
+        return;
+      }
+      const ret = await this._service.listDepartments(organizationId, projectIds);
       if (ret.status) {
         global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
       } else {
@@ -155,7 +187,12 @@ export class OrganizationController {
     this.initLog();
     const trace = `getDepartmentMetrics${global.Helpers.getTraceID(req.query)}`;
     try {
-      const ret = await this._service.getDepartmentMetrics(req.params.id);
+      const projectIds = this._selectedProjectIds(req);
+      if (!projectIds && !String(req.params.id || '').startsWith('dept-')) {
+        global.Helpers.badRequestStatusBuild(res, 'Select a project: a valid project_id is required.');
+        return;
+      }
+      const ret = await this._service.getDepartmentMetrics(req.params.id, req.query.organization_id as string | undefined, projectIds);
       if (ret.status) {
         global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
       } else {

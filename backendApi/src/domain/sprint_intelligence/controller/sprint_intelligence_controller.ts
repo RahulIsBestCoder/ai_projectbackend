@@ -5,6 +5,11 @@ import { ISprintCreate, ISprintUpdate } from '../interface/sprint_intelligence_i
 /**
  * `SprintIntelligenceController` – Handles sprint CRUD (plan §08).
  */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: SprintIntelligenceController
+ */
 export class SprintIntelligenceController {
   private readonly _service = new SprintIntelligenceService();
 
@@ -188,7 +193,28 @@ export class SprintIntelligenceController {
     }
   };
 
-  /*
+  /*<｜image｜>
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-12
+   * @Function: getTaigaStatusTabs
+   */
+  public getTaigaStatusTabs = async (req: Request, res: Response): Promise<void> => {
+    this.initLog();
+    const trace = `getTaigaStatusTabs${global.Helpers.getTraceID(req.params)}`;
+    try {
+      const ret = await this._service.getTaigaStatusTabs(req.params.id);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error) {
+      global.logs.writelog(trace, error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, 'Something went wrong. Please try again');
+    }
+  };
+
+  /*<｜image｜>
    * @Developer: Sougata Bauri
    * @Date: 2026-09-10
    * @Function: getVelocity
@@ -197,7 +223,38 @@ export class SprintIntelligenceController {
     this.initLog();
     const trace = `getVelocity${global.Helpers.getTraceID(req.params)}`;
     try {
-      const ret = await this._service.getVelocity(req.params.id);
+      const historyLimitValue = req.query.history_limit;
+      const historyLimit = historyLimitValue === undefined
+        ? undefined
+        : Number(historyLimitValue);
+      if (historyLimit !== undefined && (!Number.isInteger(historyLimit) || historyLimit < 1 || historyLimit > 50)) {
+        global.Helpers.badRequestStatusBuild(res, 'history_limit must be an integer between 1 and 50.');
+        return;
+      }
+
+      const ret = await this._service.getVelocity(req.params.sprintId, historyLimit);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error) {
+      global.logs.writelog(trace, error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, 'Something went wrong. Please try again');
+    }
+  };
+
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-11
+   * @Function: getComparison
+   */
+  public getComparison = async (req: Request, res: Response): Promise<void> => {
+    this.initLog();
+    const trace = `getComparison${global.Helpers.getTraceID(req.params)}`;
+    try {
+      const ret = await this._service.getComparison(req.params.id);
       if (ret.status) {
         global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
       } else {

@@ -63,7 +63,7 @@ async function run(): Promise<void> {
     'risk_alert', 'deadline_slip', 'sync_failed', 'sprint_closeout',
     'report_ready', 'mention', 'assignment',
   ]);
-  await byName('master_ai_provider', ['anthropic', 'openai', 'gemini', 'deepseek', 'ollama']);
+  await byName('master_ai_provider', ['anthropic', 'openai', 'gemini', 'groq', 'deepseek', 'ollama']);
 
   // countries -> states -> cities
   const countries: [string, string][] = [

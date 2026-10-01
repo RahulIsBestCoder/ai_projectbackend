@@ -5,6 +5,11 @@ import { IUserCreate, IUserUpdate } from '../interface/user_interface';
 /**
  * `UserController` – Handles user CRUD and profile operations.
  */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: UserController
+ */
 export class UserController {
   private readonly _service = new UserService();
 

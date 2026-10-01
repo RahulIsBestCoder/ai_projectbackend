@@ -10,6 +10,7 @@ export class SprintIntelligenceModel extends Model {
       {
         project_id: { type: String, required: true },
         name: { type: String, required: true },
+        taiga_milestone_id: { type: Number },
         goal: { type: String },
         start_date: { type: Date },
         end_date: { type: Date },

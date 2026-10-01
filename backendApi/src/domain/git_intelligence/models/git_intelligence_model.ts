@@ -19,6 +19,10 @@ export class GitIntelligenceModel extends Model {
         url: { type: String },
         default_branch: { type: String },
         language: { type: String },
+        // Dropdown selection from the UI: which team/purpose this repo serves
+        // (ui | backend | apps | shared | other) — set on the integration at
+        // connect time and propagated here by the sync.
+        category: { type: String, default: 'other', index: true },
         provider: { type: String, required: true },
         token: { type: String },
         status: { type: Number, default: 0 },

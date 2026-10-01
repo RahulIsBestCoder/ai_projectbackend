@@ -1,9 +1,15 @@
 import { Request, Response } from 'express';
 import { AnalyticsService } from '../service/analytics_service';
+import { HealthRulesService } from '../service/health_rules_score';
 import { ISnapshotCreate, ISnapshotUpdate } from '../interface/analytics_interface';
 
 /**
  * `AnalyticsController` – Handles metric-snapshot CRUD (plan §09).
+ */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: AnalyticsController
  */
 export class AnalyticsController {
   private readonly _service = new AnalyticsService();
@@ -156,6 +162,27 @@ export class AnalyticsController {
     const trace = `getHealthStrategies${global.Helpers.getTraceID(req.params)}`;
     try {
       const ret = await this._service.getHealthStrategies(req.params.projectId);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error) {
+      global.logs.writelog(trace, error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, 'Something went wrong. Please try again');
+    }
+  };
+
+  /*
+   * @Function: getRulesHealth
+   * @Description: Rule-book health score (weights from the scoring rules doc),
+   *   calculated from delivery data on request. Nothing is stored.
+   */
+  public getRulesHealth = async (req: Request, res: Response): Promise<void> => {
+    this.initLog();
+    const trace = `getRulesHealth${global.Helpers.getTraceID(req.params)}`;
+    try {
+      const ret = await new HealthRulesService().getRulesHealth(req.params.projectId);
       if (ret.status) {
         global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
       } else {

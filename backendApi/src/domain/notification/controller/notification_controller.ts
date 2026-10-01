@@ -5,6 +5,11 @@ import { INotificationCreate, INotificationUpdate } from '../interface/notificat
 /**
  * `NotificationController` – Handles notification CRUD (plan §13).
  */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: NotificationController
+ */
 export class NotificationController {
   private readonly _service = new NotificationService();
 

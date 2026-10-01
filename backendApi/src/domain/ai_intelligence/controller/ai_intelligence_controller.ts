@@ -1,35 +1,45 @@
 import { Request, Response } from 'express';
 import { AiIntelligenceService } from '../service/ai_intelligence_service';
+import { ProjectModel } from '../../project/models/project_model';
 
 /**
  * `AiIntelligenceController` – Handles AI chat, provider queries, and project-scoped intelligence.
  */
+/*
+ * @Developer: Sougata Bauri
+ * @Date: 2026-09-27
+ * @Function: AiIntelligenceController
+ */
 export class AiIntelligenceController {
   private readonly _service = new AiIntelligenceService();
+  private readonly _projectModel = new ProjectModel();
 
-  /**
-   * Basic AI chat endpoint.
-   * POST /ai/chat
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: chat
    */
   public chat = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { prompt, project_id } = req.body;
-      if (!prompt) {
-        global.Helpers.badRequestStatusBuild(res, 'Prompt is required');
+      const { prompt, project_id, provider, model, history } = req.body;
+      if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 16000) {
+        global.Helpers.badRequestStatusBuild(res, 'Prompt must contain 1-16000 characters');
         return;
       }
 
-      const result = await this._service.generateChatResponse({ prompt, project_id });
-      global.Helpers.successStatusBuild(res, { response: result }, 'AI response generated successfully');
+      let context: any;
+      const result = await this._service.generateChatResponse({ prompt, project_id, provider, model, history }, value => { context = value; });
+      global.Helpers.successStatusBuild(res, { response: result, context }, 'AI response generated successfully');
     } catch (error: any) {
       global.logs.writelog('chat', error, 'ERROR');
       global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
     }
   };
 
-  /**
-   * Generate (or regenerate) the AI summary of a chat conversation.
-   * POST /ai/chat/summary
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: generateChatSummary
    */
   public generateChatSummary = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -42,9 +52,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Fetch the stored chat summary (no regeneration).
-   * GET /ai/chat/summary?session_id=... | ?project_id=...
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getChatSummary
    */
   public getChatSummary = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -57,9 +68,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Get available AI providers.
-   * GET /ai/providers
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getProviders
    */
   public getProviders = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -71,23 +83,77 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Get available AI models.
-   * GET /ai/models
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getModels
    */
   public getModels = async (req: Request, res: Response): Promise<void> => {
     try {
-      const models = await this._service.getAvailableModels();
+      const models = await this._service.getAvailableModels(req.query.provider as string | undefined);
       global.Helpers.successStatusBuild(res, models, 'Models fetched successfully');
     } catch (error: any) {
       global.logs.writelog('getModels', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
+    }
+  };
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: switchProvider
+   */
+  public switchProvider = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { provider, model } = req.body;
+      if (!provider) {
+        global.Helpers.badRequestStatusBuild(res, 'provider is required (gemini, groq, deepseek, ollama, or nvidia)');
+        return;
+      }
+      if (typeof model !== 'string' || !model.trim()) {
+        global.Helpers.badRequestStatusBuild(res, 'model is required');
+        return;
+      }
+      const ret = await this._service.switchActiveProvider(provider, model);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error: any) {
+      global.logs.writelog('switchProvider', error, 'ERROR');
       global.Helpers.badRequestStatusBuild(res, 'Something went wrong');
     }
   };
 
-  /**
-   * Analyze project and return structured insights.
-   * POST /projects/:projectId/ai/analyze
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getTokenUsage
+   */
+  public getTokenUsage = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { provider, project_id, window_ms } = req.query as any;
+      const ret = await this._service.getTokenUsage({
+        provider,
+        project_id,
+        window_ms: window_ms ? Number(window_ms) : undefined,
+      });
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error: any) {
+      global.logs.writelog('getTokenUsage', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, 'Something went wrong');
+    }
+  };
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: analyzeProject
    */
   public analyzeProject = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -106,9 +172,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Generate project summary.
-   * POST /projects/:projectId/ai/summary
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: generateSummary
    */
   public generateSummary = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -126,9 +193,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Generate actionable insights for the project.
-   * POST /projects/:projectId/ai/insights
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: generateInsights
    */
   public generateInsights = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -146,9 +214,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Generate prioritized recommendations.
-   * POST /projects/:projectId/ai/recommendations
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: generateRecommendations
    */
   public generateRecommendations = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -166,9 +235,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Generate comprehensive project report.
-   * POST /projects/:projectId/ai/reports
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: generateReport
    */
   public generateReport = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -186,9 +256,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Get cached insights for a project.
-   * GET /projects/:projectId/ai/sessions
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getProjectSessions
    */
   public getProjectSessions = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -208,6 +279,11 @@ export class AiIntelligenceController {
 
   // Keep existing CRUD methods for DB insights
 
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: createInsight
+   */
   public createInsight = async (req: Request, res: Response): Promise<void> => {
     try {
       const ret = await this._service.createInsight(req.body);
@@ -217,6 +293,11 @@ export class AiIntelligenceController {
     }
   };
 
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getInsight
+   */
   public getInsight = async (req: Request, res: Response): Promise<void> => {
     try {
       const ret = await this._service.getInsight(req.params.id);
@@ -226,6 +307,11 @@ export class AiIntelligenceController {
     }
   };
 
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: updateInsight
+   */
   public updateInsight = async (req: Request, res: Response): Promise<void> => {
     try {
       const ret = await this._service.updateInsight(req.params.id, req.body);
@@ -235,6 +321,11 @@ export class AiIntelligenceController {
     }
   };
 
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: deleteInsight
+   */
   public deleteInsight = async (req: Request, res: Response): Promise<void> => {
     try {
       const ret = await this._service.deleteInsight(req.params.id);
@@ -244,9 +335,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Generate an AI sprint/deadline plan from a project description.
-   * POST /plans  (also mounted as POST /ai/plans)
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: generatePlan
    */
   public generatePlan = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -258,13 +350,23 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * List generated plans (optionally filtered by project).
-   * GET /plans?project_id=...
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: listPlans
    */
   public listPlans = async (req: Request, res: Response): Promise<void> => {
     try {
-      const plans = await this._service.listPlans((req.query.project_id as string) || undefined);
+      const projectId = (req.query.project_id as string) || undefined;
+      // If a project_id is supplied, ensure the project exists before returning plans.
+      if (projectId) {
+        const project = await this._projectModel.findByAny({ _id: projectId, is_deleted: false });
+        if (!project) {
+          global.Helpers.badRequestStatusBuild(res, `Project with id ${projectId} not found`);
+          return;
+        }
+      }
+      const plans = await this._service.listPlans(projectId);
       global.Helpers.successStatusBuild(res, plans, 'Plans fetched successfully');
     } catch (error: any) {
       global.logs.writelog('listPlans', error, 'ERROR');
@@ -272,9 +374,10 @@ export class AiIntelligenceController {
     }
   };
 
-  /**
-   * Fetch a single generated plan by id.
-   * GET /plans/:id
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getPlan
    */
   public getPlan = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -282,6 +385,102 @@ export class AiIntelligenceController {
       global.Helpers.successStatusBuild(res, plan, 'Plan fetched successfully');
     } catch (error: any) {
       global.logs.writelog('getPlan', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
+    }
+  };
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: acceptPlan
+   */
+  public acceptPlan = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const resync = req.query.resync === 'true' || req.body?.resync === true;
+      const ret = await this._service.acceptPlan(req.params.id, resync);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error: any) {
+      global.logs.writelog('acceptPlan', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
+    }
+  };
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getPlanExecution
+   */
+  public getPlanExecution = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const ret = await this._service.getPlanExecution(req.params.id);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error: any) {
+      global.logs.writelog('getPlanExecution', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
+    }
+  };
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: toggleExecutionItem
+   */
+  public toggleExecutionItem = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const ret = await this._service.toggleExecutionItem(req.params.id, req.params.itemId, req.body.is_completed === true);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error: any) {
+      global.logs.writelog('toggleExecutionItem', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
+    }
+  };
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: rebuildProjectContext
+   */
+  public rebuildProjectContext = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const ret = await this._service.rebuildProjectContext(req.params.projectId, 'manual');
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error: any) {
+      global.logs.writelog('rebuildProjectContext', error, 'ERROR');
+      global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
+    }
+  };
+
+  /*
+   * @Developer: Sougata Bauri
+   * @Date: 2026-09-27
+   * @Function: getProjectContext
+   */
+  public getProjectContext = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const ret = await this._service.getProjectContext(req.params.projectId);
+      if (ret.status) {
+        global.Helpers.successStatusBuild(res, ret.data_sets, ret.status_message);
+      } else {
+        global.Helpers.badRequestStatusBuild(res, ret.status_message);
+      }
+    } catch (error: any) {
+      global.logs.writelog('getProjectContext', error, 'ERROR');
       global.Helpers.badRequestStatusBuild(res, error.message || 'Something went wrong');
     }
   };

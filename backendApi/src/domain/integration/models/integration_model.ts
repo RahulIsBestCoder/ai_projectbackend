@@ -14,6 +14,8 @@ import { Model } from '../../../model';
  *   repository_organization – Optional org/space name
  *   repository_url      – Optional full URL to the repo
  *   token               – OAuth or API token for the provider
+ *   username            – Optional username for provider authentication (e.g., Taiga)
+ *   password            – Optional password for provider authentication (e.g., Taiga)
  *   sync_status         – idle | syncing | success | partial | failed
  *   last_sync_at        – Timestamp of the last sync run
  *   status              – Numeric status code (0=inactive, 1=active, 2=error)
@@ -29,9 +31,16 @@ export class IntegrationModel extends Model {
         organization_id: { type: String, index: true },
         provider: { type: String, required: true },
         repository_name: { type: String, required: true },
+        branch: { type: String },
         repository_organization: { type: String },
         repository_url: { type: String },
+        // Dropdown selection from the UI: which team/purpose this repo serves
+        // (ui | backend | apps | shared | other). Propagated to the
+        // git_intelligence repo row during sync.
+        category: { type: String, default: 'other', index: true },
         token: { type: String },
+        username: { type: String },
+        password: { type: String },
         sync_status: { type: String, default: 'idle' },
         last_sync_at: { type: Date },
         status: { type: Number, default: 0 },
