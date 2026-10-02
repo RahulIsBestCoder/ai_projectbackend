@@ -14,7 +14,7 @@ import { IAiProvider, AiTokenUsage, estimateTokens } from './base_provider';
  *  - AI_RETRY_DELAY_MS               : initial retry delay in ms (default: 1000)
  */
 export class GoogleProvider implements IAiProvider {
-  /** @Developer Cline @Date 2026-09-13 — provider contract fields for the tabs UI */
+  /** @Developer Sougata Bauri @Date 2026-09-13 — provider contract fields for the tabs UI */
   public readonly type = 'gemini';
   public readonly name = 'Google Gemini';
   public get model(): string {

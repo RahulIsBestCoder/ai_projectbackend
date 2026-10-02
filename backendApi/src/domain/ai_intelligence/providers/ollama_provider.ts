@@ -35,7 +35,7 @@ export class OllamaProvider implements IAiProvider {
     global.logs.writelog(`${this.logName}.${method}`, msg, severity);
   }
 
-  /** @Developer Cline @Date 2026-09-13 @Function generate */
+  /** @Developer Sougata Bauri @Date 2026-09-13 @Function generate */
   public async generate(prompt: string): Promise<string> {
     this.lastUsage = null;
     this.log('generate', `Model: ${this._model}`);
@@ -89,7 +89,7 @@ export class OllamaProvider implements IAiProvider {
     }
   }
 
-  /** @Developer Cline @Date 2026-09-13 @Function getModels */
+  /** @Developer Sougata Bauri @Date 2026-09-13 @Function getModels */
   public async getModels(): Promise<string[]> {
     this.log('getModels', 'Fetching available Ollama models.');
     try {
