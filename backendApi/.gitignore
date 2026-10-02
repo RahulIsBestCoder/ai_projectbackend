@@ -16,7 +16,7 @@ docs/
 logs/
 backendplanai/
 .env
-.md
+*.md
 #package-lock.json
 # Compiled Java class files
 *.class
