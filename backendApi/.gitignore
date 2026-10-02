@@ -12,6 +12,7 @@ logs/
 # Node artifact files
 node_modules/
 dist/
+docs/
 logs/
 backendplanai/
 .env
